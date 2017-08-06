@@ -56,11 +56,12 @@ int main()
 
 	int sum = 0;
 
-	cppdf::transform_block<char, wchar_t> tb(1, [](auto c) {
+	cppdf::transform_block<char, wchar_t> tb(4, [](auto c) {
 		return (wchar_t)c;
 	});
-	cppdf::buffer_block<wchar_t> bb(1);
-	cppdf::action_block<wchar_t> ab(1, [&sum](auto c) {
+
+	cppdf::buffer_block<wchar_t> bb(4);
+	cppdf::action_block<wchar_t> ab(4, [&sum](auto c) {
 		std::cout << (char)c;
 		sum += (int)c;
 	});
@@ -81,6 +82,7 @@ int main()
 	tb.try_push(c2);
 	tb.try_push(c3);
 	tb.try_push(c4);
+	std::this_thread::sleep_for(200ms);
 	auto res5 = tb.try_push(c5);
 	auto res6 = tb.try_push(c6);
 	auto res7 = tb.try_push(c7);
