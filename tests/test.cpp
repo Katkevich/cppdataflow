@@ -5,68 +5,29 @@
 #include <transform_block.h>
 #include <buffer_block.h>
 
+#include <ppltasks.h>
+
 using namespace std;
-
-class Foo
-{
-public:
-	Foo()
-	{
-		std::cout << "ctor" << std::endl;
-	}
-	Foo(Foo&& f)
-	{
-		std::cout << "move ctor" << std::endl;
-	}
-
-	Foo& operator=(Foo&& f)
-	{
-		std::cout << "move op" << std::endl;
-		return *this;
-	}
-
-	Foo(const Foo& foo)
-	{
-
-		std::cout << "copy ctor" << std::endl;
-	}
-
-	Foo& operator=(const Foo&)
-	{
-		std::cout << "copy op" << std::endl;
-	}
-};
-
-void bar(Foo f)
-{
-	std::cout << "bar call" << std::endl;
-}
-
-void foo(Foo&& f)
-{
-	bar(f);
-	auto l = [f = std::move(f)]() { std::cout << "lambda call" << std::endl; };
-	l();
-}
 
 int main()
 {
-	Foo f;
-	foo(std::move(f));
-
 	int sum = 0;
 
+	/*cppdf::transform_block<char, wchar_t> tb(4, [](auto c) {
+		return std::async([&] { return (wchar_t)c; });
+	});*/
 	cppdf::transform_block<char, wchar_t> tb(4, [](auto c) {
-		return (wchar_t)c;
+		return concurrency::create_task([c] { return (wchar_t)c; });
 	});
 
 	cppdf::buffer_block<wchar_t> bb(4);
-	cppdf::action_block<wchar_t> ab(4, [&sum](auto c) {
-		std::cout << (char)c;
-		sum += (int)c;
+
+	cppdf::action_block<wchar_t> ab(4, [](wchar_t c) {
+		return std::async([c] {
+			std::cout << (char)c;
+		});
 	});
 
-	//tb.link_to(ab);
 	tb.link_to(bb);
 	bb.link_to(ab);
 

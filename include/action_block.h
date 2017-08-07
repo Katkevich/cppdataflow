@@ -7,6 +7,7 @@
 #include <details\single_successor_block.h>
 #include <details\complete_msg.h>
 #include <details\loop_manager.h>
+#include <details\block_body.h>
 
 namespace cppdf
 {
@@ -17,9 +18,9 @@ namespace cppdf
 	{
 	public:
 		template<class Fn>
-		action_block(unsigned short parallelism, Fn&& body)
+		action_block(unsigned short parallelism, Fn&& body) noexcept
 			: details::reservable_block(parallelism)
-			, body_(std::forward<Fn>(body))
+			, body_(std::function<decltype(body(std::declval<TIn>()))(TIn)>(std::forward<Fn>(body)))
 		{
 			run_pipeline_loop();
 		}
@@ -39,7 +40,7 @@ namespace cppdf
 		virtual void process_item(TIn&& item) override
 		{
 			concurrency::create_task([this, item = std::move(item)]{
-				body_(std::move(item));
+				body_.invoke(std::move(item));
 				complete_msgs_.push(details::complete_msg{});
 
 				loop_mngr_.notify();
@@ -83,7 +84,7 @@ namespace cppdf
 
 	private:
 		details::loop_manager loop_mngr_;
-		std::function<void(TIn)> body_;
+		details::block_body<TIn> body_;
 		concurrency::concurrent_queue<details::complete_msg> complete_msgs_;
 	};
 

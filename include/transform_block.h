@@ -7,6 +7,7 @@
 #include <concurrent_queue.h>
 #include <details\reservable_block.h>
 
+#include <details\block_body.h>
 #include <details\loop_manager.h>
 #include <details\single_successor_block.h>
 #include <details\single_predecessor_block.h>
@@ -58,7 +59,7 @@ namespace cppdf
 		virtual void process_item(TIn&& item) override
 		{
 			concurrency::create_task([this, item = std::move(item)]{
-				auto result = body_(std::move(item));
+				auto result = body_.invoke(std::move(item));
 				queue_push(std::move(result));
 
 				loop_mngr_.notify();
@@ -97,8 +98,7 @@ namespace cppdf
 
 	private:
 		details::loop_manager loop_mngr_;
-
-		std::function<TOut(TIn)> body_;
+		details::block_body<TIn, TOut> body_;
 	};
 
 }
