@@ -9,7 +9,7 @@ namespace cppdf::details
 	public:
 		loop_manager()
 		{
-			loop_next_step_notified_.store(false);
+			loop_next_step_notified_.store(true);
 		}
 
 		void notify()

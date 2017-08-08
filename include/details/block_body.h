@@ -33,34 +33,57 @@ namespace cppdf::details
 			//Do nothing.
 		}
 
-		TOut invoke(TIn in)
+		template<class = std::enable_if_t<std::is_same_v<TIn, void>>>
+		TOut invoke()
 		{
-			struct void_return {};
+			if constexpr (std::is_same_v<TOut, void>)
+				invoke(void_stub{});
+			else
+				return invoke(void_stub{});
+		}
 
+		template<class UIn>
+		TOut invoke(UIn&& in)
+		{
 			auto result = std::visit([&](auto&& body) {
-				using item_t = std::decay_t<decltype(body)>::result_type;
+				using ret_t = std::decay_t<decltype(body)>::result_type;
+				using par_t = std::decay_t<UIn>;
 
 				if constexpr (std::is_same_v<TOut, void>)
 				{
-					if constexpr (std::is_same_v<item_t, TOut>)
-						body(std::move(in));
+					if constexpr (std::is_same_v<par_t, void_stub>)
+						if constexpr (std::is_same_v<ret_t, TOut>)
+							body();
+						else
+							body().wait();
 					else
-						body(std::move(in)).wait();
+						if constexpr (std::is_same_v<ret_t, TOut>)
+							body(std::forward<UIn>(in));
+						else
+							body(std::forward<UIn>(in)).wait();
 
-					return void_return{};
+					return void_stub{};
 				}
 				else
-					if constexpr (std::is_same_v<item_t, TOut>)
-						return body(std::move(in));
+					if constexpr (std::is_same_v<par_t, void_stub>)
+						if constexpr (std::is_same_v<ret_t, TOut>)
+							return body();
+						else
+							return body().get();
 					else
-						return body(std::move(in)).get();
+						if constexpr (std::is_same_v<ret_t, TOut>)
+							return body(std::forward<UIn>(in));
+						else
+							return body(std::forward<UIn>(in)).get();
 			}, body_);
 
-			if constexpr (!std::is_same_v<decltype(result), void_return>)
+			if constexpr (!std::is_same_v<decltype(result), void_stub>)
 				return result;
 		}
 
 	private:
+		struct void_stub {};
+
 		std::variant<
 #if defined(HAS_PPL) || defined(HAS_PPLX)
 			std::function<ppl::task<TOut>(TIn)>,
