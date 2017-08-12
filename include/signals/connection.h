@@ -17,14 +17,14 @@ namespace cppdf::signals
 
 		explicit connection(details::signal_base& signal)
 			: id_(generate_id())
-			, signal_(signal)
+			, signal_(&signal)
 		{
 			//do nothing.
 		}
 
 		void disconnect()
 		{
-			signal_.get().disconnect(*this);
+			signal_->disconnect(*this);
 		}
 
 		bool operator==(const connection& that) const
@@ -42,6 +42,6 @@ namespace cppdf::signals
 
 	private:
 		std::size_t id_;
-		std::reference_wrapper<details::signal_base> signal_;
+		details::signal_base* signal_;
 	};
 }

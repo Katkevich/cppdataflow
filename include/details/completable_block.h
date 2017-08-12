@@ -1,11 +1,11 @@
 #pragma once
-#include <atomic>
 #include <future>
 #include <optional>
 
 #include <block_i.h>
 #include <signals\signal.h>
 #include <signals\connection.h>
+#include <details\movable_atomic.h>
 
 namespace cppdf::details
 {
@@ -16,7 +16,7 @@ namespace cppdf::details
 		completable_block()
 		{
 			completion_future_ = completion_promise_.get_future();
-			is_completion_.store(false);
+			is_completion_->store(false);
 		}
 
 		virtual const std::future<void>& get_completion() const override
@@ -31,7 +31,7 @@ namespace cppdf::details
 
 		virtual void complete() override
 		{
-			is_completion_.store(true);
+			is_completion_->store(true);
 		}
 
 		virtual bool is_done() const override
@@ -45,7 +45,7 @@ namespace cppdf::details
 	protected:
 		bool is_completion() const
 		{
-			return is_completion_.load();
+			return is_completion_->load();
 		}
 
 		void finish()
@@ -58,7 +58,7 @@ namespace cppdf::details
 		std::future<void> completion_future_;
 		std::promise<void> completion_promise_;
 		signals::signal<void(void)> completion_signal_;
-		std::atomic<bool> is_completion_;
+		details::movable_atomic<bool> is_completion_;
 	};
 
 }

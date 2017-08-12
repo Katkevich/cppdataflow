@@ -37,7 +37,7 @@ namespace cppdf
 		virtual std::optional<TOut> try_pull() override
 		{
 			auto item = try_pull_impl();
-			producer_pull_push();
+			pull_push();
 
 			loop_mngr_.notify();
 

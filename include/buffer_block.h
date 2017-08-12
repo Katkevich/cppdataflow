@@ -32,7 +32,7 @@ namespace cppdf
 		virtual std::optional<T> try_pull() override
 		{
 			auto item = try_pull_impl();
-			producer_pull_push();
+			pull_push();
 
 			try_finish();
 

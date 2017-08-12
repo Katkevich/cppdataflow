@@ -33,6 +33,11 @@ namespace cppdf::details
 			//Do nothing.
 		}
 
+		block_body(block_body&&) = default;
+		block_body& operator=(block_body&&) = default;
+		block_body(const block_body&) = delete;
+		block_body& operator=(const block_body&) = delete;
+
 		template<class = std::enable_if_t<std::is_same_v<TIn, void>>>
 		TOut invoke()
 		{

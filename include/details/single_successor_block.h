@@ -3,6 +3,7 @@
 
 #include <details\completable_block.h>
 #include <details\reservable_block.h>
+#include <details\movable_atomic.h>
 #include <producer_block_i.h>
 #include <consumer_block_i.h>
 
@@ -17,19 +18,15 @@ namespace cppdf::details
 	public:
 		single_successor_block()
 		{
-			producer_.store(nullptr);
-		}
-
-		virtual void register_producer(producer_block_i<TIn>& producer) override
-		{
-			if (producer_completion_connection_.has_value())
-				producer_completion_connection_->disconnect();
-
-			producer_.store(&producer);
-			producer_completion_connection_ = producer.register_completion_handler([this] { producer_done(); });
 		}
 
 	protected:
+		virtual void connect_producer(const link<TIn>& link) override
+		{
+			link_ = link;
+			link_.on_producer_completion([this] { producer_done(); });
+		}
+
 		bool try_push_impl(TIn& item)
 		{
 			if (is_completion())
@@ -42,22 +39,26 @@ namespace cppdf::details
 			return has_slot;
 		}
 
-		void producer_pull_push()
+		void pull_push()
 		{
-			auto producer = producer_.load();
-			if (producer && try_reserve())
+			producer_block_i<TIn>* producer = nullptr;
+
+			while ((producer = get_producer()) && try_reserve())
 			{
 				auto produced_item = producer->try_pull();
 				if (produced_item.has_value())
 					process_item(std::move(produced_item.value()));
 				else
+				{
 					try_release();
+					break;
+				}
 			}
 		}
 
 		producer_block_i<TIn>* get_producer() const
 		{
-			return producer_.load();
+			return link_.get_producer();
 		}
 
 		virtual void process_item(TIn&&) = 0;
@@ -65,6 +66,6 @@ namespace cppdf::details
 
 	private:
 		std::optional<signals::connection> producer_completion_connection_;
-		std::atomic<producer_block_i<TIn>*> producer_;
+		link<TIn> link_;
 	};
 }

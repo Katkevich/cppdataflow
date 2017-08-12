@@ -3,6 +3,7 @@
 
 #include <details\completable_block.h>
 #include <details\reservable_block.h>
+#include <details\movable_atomic.h>
 #include <producer_block_i.h>
 #include <consumer_block_i.h>
 
@@ -17,21 +18,19 @@ namespace cppdf::details
 	public:
 		single_predecessor_block()
 		{
-			consumer_.store(nullptr);
 		}
 
-		virtual void register_consumer(consumer_block_i<TOut>& consumer) override
+		virtual link<TOut> link_to(consumer_block_i<TOut>& consumer) override
 		{
-			consumer_.store(&consumer);
-		}
-
-		virtual void link_to(consumer_block_i<TOut>& consumer) override
-		{
-			register_consumer(consumer);
-			consumer.register_producer(*this);
+			return link<TOut>(this, &consumer);
 		}
 
 	protected:
+		virtual void connect_consumer(const link<TOut>& link) override
+		{
+			link_ = link;
+		}
+
 		std::optional<TOut> try_pull_impl()
 		{
 			std::optional<TOut> pulled_item;
@@ -58,11 +57,11 @@ namespace cppdf::details
 
 		consumer_block_i<TOut>* get_consumer() const
 		{
-			return consumer_.load();
+			return link_.get_consumer();
 		}
 
 	private:
 		concurrency::concurrent_queue<TOut> items_;
-		std::atomic<consumer_block_i<TOut>*> consumer_;
+		link<TOut> link_;
 	};
 }
