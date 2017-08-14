@@ -20,18 +20,7 @@ namespace cppdf::details
 		{
 		}
 
-		virtual link<TOut> link_to(consumer_block_i<TOut>& consumer) override
-		{
-			return link<TOut>(this, &consumer);
-		}
-
-	protected:
-		virtual void connect_consumer(const link<TOut>& link) override
-		{
-			link_ = link;
-		}
-
-		std::optional<TOut> try_pull_impl()
+		virtual std::optional<TOut> try_pull() override
 		{
 			std::optional<TOut> pulled_item;
 			TOut item;
@@ -41,13 +30,31 @@ namespace cppdf::details
 				try_release();
 				pulled_item = std::move(item);
 			}
-		
+
 			return pulled_item;
+		}
+
+
+		virtual link<TOut> link_to(consumer_block_i<TOut>& consumer) override
+		{
+			return link<TOut>(this, &consumer);
+		}
+
+		virtual signals::connection register_has_item_handler(std::function<void()> handler)
+		{
+			return has_items_signal_.connect(std::move(handler));
+		}
+
+	protected:
+		virtual void connect_consumer(const link<TOut>& link) override
+		{
+			link_ = link;
 		}
 
 		void queue_push(TOut&& item)
 		{
 			items_.push(std::move(item));
+			has_items_signal_();
 		}
 
 		bool queue_try_pop(TOut& item)
@@ -62,6 +69,7 @@ namespace cppdf::details
 
 	private:
 		concurrency::concurrent_queue<TOut> items_;
+		signals::signal<void(void)> has_items_signal_;
 		link<TOut> link_;
 	};
 }

@@ -25,11 +25,6 @@ namespace cppdf
 			run_pipeline_loop();
 		}
 
-		virtual bool try_push(TIn& item) override
-		{
-			return try_push_impl(item);
-		}
-
 		virtual void complete() override
 		{
 			details::completable_block::complete();
@@ -37,19 +32,18 @@ namespace cppdf
 		}
 
 	private:
+		virtual void on_producer_done() override
+		{
+			loop_mngr_.notify();
+		}
+
 		virtual void process_item(TIn&& item) override
 		{
 			concurrency::create_task([this, item = std::move(item)]{
 				body_.invoke(std::move(item));
-				complete_msgs_.push(details::complete_msg{});
-
+				try_release();
 				loop_mngr_.notify();
 			});
-		}
-
-		virtual void producer_done() override
-		{
-			loop_mngr_.notify();
 		}
 
 		void run_pipeline_loop()
@@ -60,19 +54,7 @@ namespace cppdf
 				while (!(is_empty() && (is_completion() || (producer = get_producer()) && producer->is_done())))
 				{
 					loop_mngr_.wait_notification();
-
-					details::complete_msg complete_msg;
-					while (complete_msgs_.try_pop(complete_msg))
-					{
-						std::optional<TIn> item;
-						if (producer = get_producer())
-							item = producer->try_pull();
-						
-						if (item.has_value())
-							process_item(std::move(item.value()));
-						else
-							try_release();
-					}
+					pull_push();
 				}
 
 				if (producer = get_producer())
@@ -85,7 +67,6 @@ namespace cppdf
 	private:
 		details::loop_manager loop_mngr_;
 		details::block_body<TIn> body_;
-		concurrency::concurrent_queue<details::complete_msg> complete_msgs_;
 	};
 
 }

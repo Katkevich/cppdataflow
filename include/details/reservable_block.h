@@ -6,6 +6,10 @@ namespace cppdf::details
 	class reservable_block
 	{
 	protected:
+		reservable_block()
+		{
+		}
+
 		reservable_block(unsigned short capacity)
 			: capacity_((int)capacity)
 		{
@@ -19,7 +23,7 @@ namespace cppdf::details
 
 		bool try_reserve()
 		{
-			if (load_factor_->fetch_add(1) > capacity_)
+			if (load_factor_->fetch_add(1) >= capacity_)
 			{
 				load_factor_->fetch_sub(1);
 				return false;

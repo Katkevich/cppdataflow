@@ -29,16 +29,9 @@ namespace cppdf
 			run_pipeline_loop();
 		}
 
-		virtual bool try_push(TIn& item) override
-		{
-			return try_push_impl(item);
-		}
-
 		virtual std::optional<TOut> try_pull() override
 		{
-			auto item = try_pull_impl();
-			pull_push();
-
+			auto item = details::single_predecessor_block<TOut>::try_pull();
 			loop_mngr_.notify();
 
 			return item;
@@ -51,7 +44,7 @@ namespace cppdf
 		}
 
 	private:
-		virtual void producer_done() override
+		virtual void on_producer_done() override
 		{
 			loop_mngr_.notify();
 		}
@@ -60,8 +53,8 @@ namespace cppdf
 		{
 			concurrency::create_task([this, item = std::move(item)]{
 				auto result = body_.invoke(std::move(item));
-				queue_push(std::move(result));
 
+				queue_push(std::move(result));
 				loop_mngr_.notify();
 			});
 		}
@@ -74,19 +67,7 @@ namespace cppdf
 				while (!(is_empty() && (is_completion() || (producer = get_producer()) && producer->is_done())))
 				{
 					loop_mngr_.wait_notification();
-
-					consumer_block_i<TOut>* consumer = nullptr;
-					TOut item;
-					while ((consumer = get_consumer()) && queue_try_pop(item))
-					{
-						if (consumer->try_push(item))
-							try_release();
-						else
-						{
-							queue_push(std::move(item));
-							break;
-						}
-					}
+					pull_push();
 				}
 
 				if (producer = get_producer())

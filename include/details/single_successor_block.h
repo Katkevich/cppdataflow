@@ -20,14 +20,7 @@ namespace cppdf::details
 		{
 		}
 
-	protected:
-		virtual void connect_producer(const link<TIn>& link) override
-		{
-			link_ = link;
-			link_.on_producer_completion([this] { producer_done(); });
-		}
-
-		bool try_push_impl(TIn& item)
+		virtual bool try_push(TIn& item) override
 		{
 			if (is_completion())
 				return false;
@@ -37,6 +30,14 @@ namespace cppdf::details
 				process_item(std::move(item));
 
 			return has_slot;
+		}
+
+	protected:
+		virtual void connect_producer(const link<TIn>& link) override
+		{
+			link_ = link;
+			link_.on_producer_completion([this] { on_producer_done(); });
+			link_.on_producer_has_item([this] { pull_push(); });
 		}
 
 		void pull_push()
@@ -62,10 +63,9 @@ namespace cppdf::details
 		}
 
 		virtual void process_item(TIn&&) = 0;
-		virtual void producer_done() = 0;
+		virtual void on_producer_done() = 0;
 
 	private:
-		std::optional<signals::connection> producer_completion_connection_;
 		link<TIn> link_;
 	};
 }

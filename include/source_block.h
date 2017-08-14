@@ -23,8 +23,7 @@ namespace cppdf
 
 		virtual std::optional<TOut> try_pull() override
 		{
-			auto item = try_pull_impl();
-
+			auto item = details::single_predecessor_block<TOut>::try_pull();
 			loop_mngr_.notify();
 
 			return item;
@@ -49,13 +48,7 @@ namespace cppdf
 					{
 						item = body_.invoke();
 						if (item)
-						{
-							auto consumer = get_consumer();
-							if (consumer && consumer->try_push(item.value()))
-								try_release();
-							else
-								queue_push(std::move(item.value()));
-						}
+							queue_push(std::move(item.value()));
 						else
 							break;
 					}

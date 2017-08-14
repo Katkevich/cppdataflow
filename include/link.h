@@ -22,9 +22,16 @@ namespace cppdf
 			consumer->connect_producer(*this);
 		}
 
-		void on_producer_completion(std::function<void()> handler)
+		signals::connection on_producer_completion(std::function<void()> handler)
 		{
-			impl_->on_producer_completion(std::move(handler));
+			impl_->producer_completion_connection_ = 
+				impl_->producer_.load()->register_completion_handler(std::move(handler));
+			return impl_->producer_completion_connection_.value();
+		}
+
+		signals::connection on_producer_has_item(std::function<void()> handler)
+		{
+			return impl_->producer_.load()->register_has_item_handler(std::move(handler));
 		}
 
 		void destroy()
@@ -66,11 +73,6 @@ namespace cppdf
 
 				producer_.store(nullptr);
 				consumer_.store(nullptr);
-			}
-
-			void on_producer_completion(std::function<void()> handler)
-			{
-				producer_completion_connection_ = producer_.load()->register_completion_handler(std::move(handler));
 			}
 		};
 

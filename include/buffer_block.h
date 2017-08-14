@@ -24,16 +24,11 @@ namespace cppdf
 			//Do nothing.
 		}
 	
-		virtual bool try_push(T& item) override
-		{
-			return try_push_impl(item);
-		}
-
 		virtual std::optional<T> try_pull() override
 		{
-			auto item = try_pull_impl();
-			pull_push();
+			auto item = details::single_predecessor_block<T>::try_pull();
 
+			pull_push();
 			try_finish();
 
 			return item;
@@ -49,18 +44,14 @@ namespace cppdf
 				finish();
 		}
 
-		virtual void producer_done() override
+		virtual void on_producer_done() override
 		{
 			try_finish();
 		}
 	
 		virtual void process_item(T&& item) override
 		{
-			auto consumer = get_consumer();
-			if (consumer && consumer->try_push(item))
-				try_release();
-			else
-				queue_push(std::move(item));
+			queue_push(std::move(item));
 		}
 	};
 
